@@ -126,7 +126,10 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
 
         private static IDataProtectionBuilder PersistKeysToMongoInternal(IDataProtectionBuilder builder, Func<IMongoCollection<BsonDocument>> collectionFactory)
         {
-            builder.Services.TryAddSingleton<IXmlRepository>(services => new MongoXmlRepository(collectionFactory));
+            builder.AddKeyManagementOptions(options =>
+            {
+                options.XmlRepository = new MongoXmlRepository(collectionFactory);
+            });
 
             return builder;
         }
