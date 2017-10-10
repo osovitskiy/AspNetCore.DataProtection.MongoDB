@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.AspNetCore.DataProtection;
-using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Misc;
 
 namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
 {
@@ -13,66 +13,27 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
         /// Configures the data protection system to persist keys to specified collection in MongoDB database.
         /// </summary>
         /// <param name="builder">The builder instance to modify.</param>
-        /// <param name="collectionFactory">The factory used to create <see cref="IMongoCollection{BsonDocument}"/> instances.</param>
+        /// <param name="databaseFactory">The factory used to create <see cref="IMongoDatabase"/> instances.</param>
         /// <returns>A reference to the <see cref="IDataProtectionBuilder"/> after this operation has completed.</returns>
-        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, Func<IMongoCollection<BsonDocument>> collectionFactory)
+        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, Func<IMongoDatabase> databaseFactory)
         {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            if (collectionFactory == null)
-            {
-                throw new ArgumentNullException(nameof(collectionFactory));
-            }
-
-            return PersistKeysToMongoInternal(builder, collectionFactory);
+            return PersistKeysToMongo(builder, databaseFactory, DataProtectionKeysName);
         }
 
         /// <summary>
         /// Configures the data protection system to persist keys to specified collection in MongoDB database.
         /// </summary>
         /// <param name="builder">The builder instance to modify.</param>
-        /// <param name="client">The <see cref="IMongoClient"/> for database access.</param>
-        /// <param name="database">The name of the database.</param>
+        /// <param name="databaseFactory">The factory used to create <see cref="IMongoDatabase"/> instances.</param>
+        /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>A reference to the <see cref="IDataProtectionBuilder"/> after this operation has completed.</returns>
-        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, IMongoClient client, string database)
+        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, Func<IMongoDatabase> databaseFactory, string collectionName)
         {
-            return PersistKeysToMongo(builder, client, database, DataProtectionKeysName);
-        }
+            Ensure.IsNotNull(builder, nameof(builder));
+            Ensure.IsNotNull(databaseFactory, nameof(databaseFactory));
+            Ensure.IsNotNullOrEmpty(collectionName, nameof(collectionName));
 
-        /// <summary>
-        /// Configures the data protection system to persist keys to specified collection in MongoDB database.
-        /// </summary>
-        /// <param name="builder">The builder instance to modify.</param>
-        /// <param name="client">The <see cref="IMongoClient"/> for database access.</param>
-        /// <param name="database">The name of the database.</param>
-        /// <param name="collection">The name of the collection.</param>
-        /// <returns>A reference to the <see cref="IDataProtectionBuilder"/> after this operation has completed.</returns>
-        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, IMongoClient client, string database, string collection)
-        {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            if (client == null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            if (string.IsNullOrEmpty(database))
-            {
-                throw new ArgumentNullException(nameof(database));
-            }
-
-            if (string.IsNullOrEmpty(collection))
-            {
-                throw new ArgumentNullException(nameof(collection));
-            }
-
-            return PersistKeysToMongoInternal(builder, () => client.GetDatabase(database).GetCollection<BsonDocument>(collection));
+            return PersistKeysToMongoInternal(builder, databaseFactory, collectionName);
         }
 
         /// <summary>
@@ -80,11 +41,11 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
         /// </summary>
         /// <param name="builder">The builder instance to modify.</param>
         /// <param name="connectionString">Connection string to MongoDB server.</param>
-        /// <param name="database">The name of the database.</param>
+        /// <param name="databaseName">The name of the database to use.</param>
         /// <returns>A reference to the <see cref="IDataProtectionBuilder"/> after this operation has completed.</returns>
-        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, string connectionString, string database)
+        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, string connectionString, string databaseName)
         {
-            return PersistKeysToMongo(builder, connectionString, database, DataProtectionKeysName);
+            return PersistKeysToMongo(builder, connectionString, databaseName, DataProtectionKeysName);
         }
 
         /// <summary>
@@ -92,41 +53,26 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
         /// </summary>
         /// <param name="builder">The builder instance to modify.</param>
         /// <param name="connectionString">Connection string to MongoDB server.</param>
-        /// <param name="database">The name of the database.</param>
-        /// <param name="collection">The name of the collection.</param>
+        /// <param name="databaseName">The name of the database to use.</param>
+        /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>A reference to the <see cref="IDataProtectionBuilder"/> after this operation has completed.</returns>
-        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, string connectionString, string database, string collection)
+        public static IDataProtectionBuilder PersistKeysToMongo(this IDataProtectionBuilder builder, string connectionString, string databaseName, string collectionName)
         {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new ArgumentNullException(nameof(connectionString));
-            }
-
-            if (string.IsNullOrEmpty(database))
-            {
-                throw new ArgumentNullException(nameof(database));
-            }
-
-            if (string.IsNullOrEmpty(collection))
-            {
-                throw new ArgumentNullException(nameof(collection));
-            }
+            Ensure.IsNotNull(builder, nameof(builder));
+            Ensure.IsNotNullOrEmpty(connectionString, nameof(connectionString));
+            Ensure.IsNotNullOrEmpty(databaseName, nameof(databaseName));
+            Ensure.IsNotNullOrEmpty(collectionName, nameof(collectionName));
 
             var client = new MongoClient(connectionString);
 
-            return PersistKeysToMongoInternal(builder, () => client.GetDatabase(database).GetCollection<BsonDocument>(collection));
+            return PersistKeysToMongoInternal(builder, () => client.GetDatabase(databaseName), collectionName);
         }
 
-        private static IDataProtectionBuilder PersistKeysToMongoInternal(IDataProtectionBuilder builder, Func<IMongoCollection<BsonDocument>> collectionFactory)
+        private static IDataProtectionBuilder PersistKeysToMongoInternal(IDataProtectionBuilder builder, Func<IMongoDatabase> databaseFactory, string collectionName)
         {
             builder.AddKeyManagementOptions(options =>
             {
-                options.XmlRepository = new MongoXmlRepository(collectionFactory);
+                options.XmlRepository = new MongoXmlRepository(databaseFactory, collectionName);
             });
 
             return builder;

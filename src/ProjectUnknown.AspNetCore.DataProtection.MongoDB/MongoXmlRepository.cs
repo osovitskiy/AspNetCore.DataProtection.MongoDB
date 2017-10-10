@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.DataProtection.Repositories;
-using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Misc;
 
 namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
 {
@@ -13,15 +13,21 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
     /// </summary>
     public class MongoXmlRepository : IXmlRepository
     {
-        private readonly Func<IMongoCollection<BsonDocument>> collectionFactory;
+        private readonly Func<IMongoDatabase> databaseFactory;
+        private readonly string collectionName;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MongoXmlRepository"/>.
         /// </summary>
-        /// <param name="collectionFactory">The factory used to create <see cref="IMongoCollection{BsonDocument}"/> instances.</param>
-        public MongoXmlRepository(Func<IMongoCollection<BsonDocument>> collectionFactory)
+        /// <param name="databaseFactory">The factory used to create <see cref="IMongoDatabase"/> instances.</param>
+        /// <param name="collectionName">The name of the collection to use.</param>
+        public MongoXmlRepository(Func<IMongoDatabase> databaseFactory, string collectionName)
         {
-            this.collectionFactory = collectionFactory;
+            Ensure.IsNotNull(databaseFactory, nameof(databaseFactory));
+            Ensure.IsNotNullOrEmpty(collectionName, nameof(collectionName));
+
+            this.databaseFactory = databaseFactory;
+            this.collectionName = collectionName;
         }
 
         public IReadOnlyCollection<XElement> GetAllElements()
@@ -29,36 +35,41 @@ namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
             return GetAllElementsCore().ToList().AsReadOnly();
         }
 
+        public void StoreElement(XElement element, string friendlyName)
+        {
+            var collection = GetCollection();
+            var document = new MongoXmlDocument()
+            {
+                Xml = element.ToString(SaveOptions.DisableFormatting)
+            };
+
+            collection.InsertOne(document);
+        }
+
+        private IMongoCollection<MongoXmlDocument> GetCollection()
+        {
+            var database = databaseFactory();
+
+            if (database == null)
+            {
+                throw new InvalidOperationException("The IMongoDatabase factory method returned null.");
+            }
+
+            return database.GetCollection<MongoXmlDocument>(collectionName);
+        }
+
         private IEnumerable<XElement> GetAllElementsCore()
         {
-            var collection = collectionFactory();
-            var cursor = collection.FindSync(FilterDefinition<BsonDocument>.Empty);
+            var collection = GetCollection();
+            var cursor = collection.FindSync(FilterDefinition<MongoXmlDocument>.Empty);
 
             while (cursor.MoveNext())
             {
                 foreach (var item in cursor.Current)
                 {
-                    if (item.TryGetElement("xml", out var value) && value.Value.BsonType == BsonType.String)
-                    {
-                        yield return XElement.Parse(value.Value.AsString);
-                    }
-                    else
-                    {
-                        throw new Exception("Invalid document.");
-                    }
+                    yield return XElement.Parse(item.Xml);
                 }
             }
-        }
-
-        public void StoreElement(XElement element, string friendlyName)
-        {
-            var collection = collectionFactory();
-            var document = new BsonDocument
-            {
-                new BsonElement("xml", element.ToString(SaveOptions.DisableFormatting))
-            };
-
-            collection.InsertOne(document);
         }
     }
 }
