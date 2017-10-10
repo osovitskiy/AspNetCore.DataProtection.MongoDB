@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard1.5</TargetFramework>
-    <Authors>EvilZhopa</Authors>
-    <Company>EvilZhopa Studios</Company>
+    <Authors>Oleg Osovitskiy</Authors>
     <PackageTags>aspnetcore;dataprotection;mongo;mongodb</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageProjectUrl>https://github.com/osovitskiy/AspNetCore.DataProtection.MongoDB</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/osovitskiy/ProjectUnknown.AspNetCore.DataProtection.MongoDB</PackageProjectUrl>
     <Description>MongoDB storage support as key store.</Description>
+    <Version>1.1.0</Version>
+    <RepositoryUrl>https://github.com/osovitskiy/ProjectUnknown.AspNetCore.DataProtection.MongoDB.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseUrl>https://github.com/osovitskiy/ProjectUnknown.AspNetCore.DataProtection.MongoDB/blob/master/LICENCE.txt</PackageLicenseUrl>
   </PropertyGroup>
 
   <ItemGroup>
