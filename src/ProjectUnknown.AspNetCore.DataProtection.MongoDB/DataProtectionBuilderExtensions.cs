@@ -5,7 +5,7 @@ using MongoDB.Driver.Core.Misc;
 
 namespace ProjectUnknown.AspNetCore.DataProtection.MongoDB
 {
-    public static class MongoDataProtectionBuilderExtensions
+    public static class DataProtectionBuilderExtensions
     {
         private const string DataProtectionKeysName = "DataProtection-Keys";
 
